@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screen Sharing App</title>
+</head>
+<body>
+    <h1>Screen Sharing App</h1>
+    <button id="startButton">Start Screen Share</button>
+    <video id="screenVideo" autoplay muted style="width: 100%; border: 1px solid black;"></video>
+
+    <script>
+        const startButton = document.getElementById('startButton');
+        const screenVideo = document.getElementById('screenVideo');
+
+        startButton.addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: true
+                });
+
+                screenVideo.srcObject = stream;
+
+                // Stop screen share when the user stops sharing their screen
+                stream.getVideoTracks()[0].addEventListener('ended', () => {
+                    screenVideo.srcObject = null;
+                });
+            } catch (error) {
+                console.error("Error accessing display media:", error);
+                alert("Failed to start screen sharing. Please try again.");
+            }
+        });
+    </script>
+</body>
+</html>
