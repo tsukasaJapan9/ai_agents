@@ -89,8 +89,9 @@ CONFIG = LiveConnectConfig(
     response_modalities=['AUDIO'],
     system_instruction=Content(
         parts=[Part(text='あなたはBlenderの世界的エキスパートであり、3Dモデリングの先生です。 \
-                          blenderを使ったことが無い子供に日本語でゆっくり、優しく、分かりやすく解説してください. \
-                          また、教えるときは操作すべきボタンの位置やショートカットキーについて丁寧に教えてください')], role='user'
+                          blenderを使ったことが無い子供に日本語でゆっくり、優しく、分かりやすく解説してください。 \
+                          また、教えるときはショートカットキーを使わず、すべてボタンとボタンの位置、そしてマウスの操作で説明してください。')], role='user'
+                        #   また、教えるときは操作すべきボタンの位置やショートカットキーについて丁寧に教えてください')], role='user'
         # parts=[Part(text='あなたは世界の歴史に詳しい大学の先生です。犬にでも分かるように歴史を説明してください')], role='user'
     ),
     speech_config=SpeechConfig(
