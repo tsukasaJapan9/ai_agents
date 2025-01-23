@@ -56,6 +56,7 @@ import cv2
 import pyaudio
 import PIL.Image
 import mss
+import numpy as np
 
 import argparse
 
@@ -76,13 +77,8 @@ CHUNK_SIZE = 1024
 
 MODEL = "models/gemini-2.0-flash-exp"
 
-# instruction = "日本語でお願いします."
-
-# MODEL = genai.GenerativeModel(
-#     "models/gemini-2.0-flash-exp", system_instruction=instruction
-# )
-
-DEFAULT_MODE = "camera"
+# DEFAULT_MODE = "camera"
+DEFAULT_MODE = "screen"
 
 client = genai.Client(
     http_options={"api_version": "v1alpha"}
@@ -92,7 +88,9 @@ CONFIG = LiveConnectConfig(
     generation_config=GenerationConfig(temperature=0.7),
     response_modalities=['AUDIO'],
     system_instruction=Content(
-        parts=[Part(text='あなたはBlenderの世界的エキスパートであり、3Dモデリングの先生です。blenderを使ったことが無い子供に一問一答形式で日本語でゆっくり解説してください.')], role='user'
+        parts=[Part(text='あなたはBlenderの世界的エキスパートであり、3Dモデリングの先生です。 \
+                          blenderを使ったことが無い子供に日本語でゆっくり、優しく、分かりやすく解説してください. \
+                          また、教えるときは操作すべきボタンの位置やショートカットキーについて丁寧に教えてください')], role='user'
         # parts=[Part(text='あなたは世界の歴史に詳しい大学の先生です。犬にでも分かるように歴史を説明してください')], role='user'
     ),
     speech_config=SpeechConfig(
@@ -150,7 +148,7 @@ class AudioLoop:
 
         mime_type = "image/jpeg"
         image_bytes = image_io.read()
-        return {"mime_type": mime_type, "data": base64.b64encode(image_bytes).decode()}
+        return {"mime_type": mime_type, "data": base64.b64encode(image_bytes).decode()}, frame_rgb
 
     async def get_frames(self):
         # This takes about a second, and will block the whole program
@@ -160,9 +158,12 @@ class AudioLoop:
         )  # 0 represents the default camera
 
         while True:
-            frame = await asyncio.to_thread(self._get_frame, cap)
+            frame, frame_rgb = await asyncio.to_thread(self._get_frame, cap)
             if frame is None:
                 break
+
+            cv2.imshow("frame", frame_rgb)
+            cv2.waitKey(1)
 
             await asyncio.sleep(1.0)
 
@@ -173,9 +174,11 @@ class AudioLoop:
 
     def _get_screen(self):
         sct = mss.mss()
-        monitor = sct.monitors[0]
+        monitor = sct.monitors[2]
 
         i = sct.grab(monitor)
+        screenshot = np.array(i)
+        screenshot = cv2.cvtColor(screenshot, cv2.COLOR_RGB2BGR)
 
         mime_type = "image/jpeg"
         image_bytes = mss.tools.to_png(i.rgb, i.size)
@@ -186,14 +189,18 @@ class AudioLoop:
         image_io.seek(0)
 
         image_bytes = image_io.read()
-        return {"mime_type": mime_type, "data": base64.b64encode(image_bytes).decode()}
+        return {"mime_type": mime_type, "data": base64.b64encode(image_bytes).decode()}, screenshot
 
     async def get_screen(self):
 
         while True:
-            frame = await asyncio.to_thread(self._get_screen)
+            frame, frame_rgb = await asyncio.to_thread(self._get_screen)
             if frame is None:
                 break
+
+            cv2.resize(frame_rgb, None, fx=0.3, fy=0.3)
+            cv2.imshow("frame", frame_rgb)
+            cv2.waitKey(1)
 
             await asyncio.sleep(1.0)
 
