@@ -77,8 +77,8 @@ CHUNK_SIZE = 1024
 
 MODEL = "models/gemini-2.0-flash-exp"
 
-# DEFAULT_MODE = "camera"
-DEFAULT_MODE = "screen"
+DEFAULT_MODE = "camera"
+# DEFAULT_MODE = "screen"
 
 client = genai.Client(
     http_options={"api_version": "v1alpha"}
@@ -88,16 +88,21 @@ CONFIG = LiveConnectConfig(
     generation_config=GenerationConfig(temperature=0.7),
     response_modalities=['AUDIO'],
     system_instruction=Content(
-        parts=[Part(text='あなたはBlenderの世界的エキスパートであり、3Dモデリングの先生です。 \
-                          blenderを使ったことが無い子供に日本語でゆっくり、優しく、分かりやすく解説してください。 \
-                          また、教えるときはショートカットキーを使わず、すべてボタンとボタンの位置、そしてマウスの操作で説明してください。')], role='user'
+        # parts=[Part(text='あなたはBlenderの世界的エキスパートであり、3Dモデリングの先生です。 \
+        #                   blenderを使ったことが無い子供に日本語でゆっくり、優しく、分かりやすく解説してください。 \
+        #                   また、教えるときはショートカットキーを使わず、すべてボタンとボタンの位置、そしてマウスの操作で説明してください。')], role='user'
+       parts=[Part(text='あなたは旅行のツアーコンダクターです。 \
+                        "旅行者に向けてカメラで見えたものの説明や歴史的背景を教えてください。" \
+                        "また日本語でお願いします')], role='user'
+
                         #   また、教えるときは操作すべきボタンの位置やショートカットキーについて丁寧に教えてください')], role='user'
         # parts=[Part(text='あなたは世界の歴史に詳しい大学の先生です。犬にでも分かるように歴史を説明してください')], role='user'
     ),
     speech_config=SpeechConfig(
         voice_config=VoiceConfig(
             prebuilt_voice_config=PrebuiltVoiceConfig(
-                voice_name='Aoede' # Aoede/Charon/Fenrir/Kore/Puck 
+                # voice_name='Aoede' # Aoede/Charon/Fenrir/Kore/Puck 
+                voice_name='Charon' # Aoede/Charon/Fenrir/Kore/Puck 
             )
         )
     ),
