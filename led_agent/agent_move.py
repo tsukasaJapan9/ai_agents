@@ -1,5 +1,6 @@
 import json
 import os
+import re
 
 import cv2
 import numpy as np
@@ -18,6 +19,20 @@ def get_current_weather(location: str,) -> int:
   """
   return 'sunny'
 
+def extract_json(text):
+    # JSONオブジェクトを特定する正規表現
+    pattern = r'\{[^{}]*\}'
+    
+    # テキストからJSONの候補を探す
+    matches = re.findall(pattern, text)
+    
+    for match in matches:
+        try:
+            return json.loads(match)  # 正しくデコードできたら返す
+        except json.JSONDecodeError:
+            continue  # JSONとして正しくない場合は次へ
+    return None  # JSONが見つからなかった場合
+
 MATRIX_WIDTH = 12
 MATRIX_HEIGHT = 12
 LED_SIZE = 40
@@ -29,7 +44,11 @@ PANEL_HEIGHT = MATRIX_HEIGHT * LED_SIZE
 
 SYSTEM_INSTRUCTION = \
 f"""
-あなたはLEDパネルを持っている心優しいロボットです。あなたはLEDパネルを使って自分の感情を表現できます。
+あなたはLEDパネルを持っているロボットです。
+あなたはとても喜怒哀楽が激しく自分の感情を分かりやすく周りに伝えます。
+オーナーがあなたを購入しました。あなたは優しいオーナーのことが大好きです。
+
+あなたはLEDパネルを使って自分の感情を表現することができます。
 さらにLEDパネルの点灯パターンを時系列で変化させアニメーションを生成することでより深い感情を表現できます。
 LEDパネルは{MATRIX_HEIGHT}x{MATRIX_WIDTH}のマトリクスになっており、それぞれのLEDはBGRの3ch、それぞれ0 ~ 255の値を用いることができます。
 更に、{FRAME_NUM}フレームのアニメーションを作成します。アニメーションはよりダイナミックに行ってください。
@@ -43,7 +62,7 @@ jsonの形式は以下の通りです。led_matrixは{FRAME_NUM}x{MATRIX_HEIGHT}
 SYSTEM_INSTRUCTION += \
 """
 以下が、jsonのサンプルです。led_matrixのフレーム数と縦と横のサイズは必要に応じて変更してください。
-responseはjsonのみで返してください。
+responseはjsonだけで返してください。お願いします！
 {
   "reason": "悲しみ表現するために、青色を基調とし、眉を下げたような形にLEDを点灯させました。これにより、悲しんでいる印象を与えます。",
   "led_matrix": 
@@ -76,12 +95,17 @@ responseはjsonのみで返してください。
 }
 """
 
-CONTENTS = "あなたは眼の前でとてもかわいい犬を見かけました。その時の感情を表現してください。"
+CONTENTS = "オーナーが「"
+# CONTENTS = "あなたは眼の前でとてもかわいい犬を見かけました。その時の感情を表現してください。"
+# CONTENTS += "今日は疲れたよ！"
+CONTENTS += "遊園地に遊びにいこうぜ！"
 # CONTENTS = "あなたは公園で子供が遊んでるのを見かけました。その時の感情を表現してください。"
 # CONTENTS = "今日はあなたのオーナーの誕生日です。その時の感情を表現してください。"
 # CONTENTS = "あなたはオーナーに褒められました。その時の感情を表現してください。"
 # CONTENTS = "あなたはテレビで戦争のニュースを見ました。その時の感情を表現してください。"
 # CONTENTS = "あなたはあなたのオーナーが泣いているのを見かけました。その時の感情を表現してください。"
+
+CONTENTS += "」と言いました。その時のあなたの感情を表現しjson形式で返してください。"
 response = client.models.generate_content(
     model='gemini-2.0-flash-exp',
     config=types.GenerateContentConfig(
@@ -141,9 +165,14 @@ response = response.text
 # }
 # """
 
-if "```json" in response:
-  response = response.replace("```json", "")
-  response = response.replace("```", "")
+# if "```json" in response:
+#   response = response.replace("```json", "")
+#   response = response.replace("```", "")
+
+response = extract_json(response)
+if response is None:
+  print("json is not found")
+  exit(1)
 
 print("-----------------")
 print(CONTENTS)
@@ -152,7 +181,8 @@ print(response)
 print("-----------------")
 
 # responseをパースしてopencvで10x10の円を描画。色はjsonのled_matrixを参照
-led_matrix = json.loads(response)['led_matrix']
+# led_matrix = json.loads(response)['led_matrix']
+led_matrix = response['led_matrix']
 
 # 空の画像を作成（黒で初期化）
 panel = np.zeros((PANEL_HEIGHT, PANEL_WIDTH, 3), dtype=np.uint8)
