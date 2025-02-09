@@ -60,7 +60,8 @@ responseはjsonのみで返してください。
 """
 
 # CONTENTS = "あなたは眼の前でとてもかわいい犬を見かけました。その時の感情を表現してください。"
-CONTENTS = "あなたはテレビで戦争のニュースを見ました。その時の感情を表現してください。"
+# CONTENTS = "あなたはテレビで戦争のニュースを見ました。その時の感情を表現してください。"
+CONTENTS = "あなたはあなたのオーナーが泣いているのを見かけました。その時の感情を表現してください。"
 response = client.models.generate_content(
     model='gemini-2.0-flash-exp',
     config=types.GenerateContentConfig(
