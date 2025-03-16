@@ -5,6 +5,7 @@ from typing import Annotated
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.pydantic_v1 import BaseModel, Field
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 
 os.environ["LANGCHAIN_TRACING"] = "true"
@@ -271,7 +272,8 @@ class RequirementDocumentGenerator:
     return chain.invoke({"user_request": user_request, "interviews": interview_results})
 
 
-_llm = ChatOpenAI(model="gpt-4o", temperature=0.0)
+ChatOpenAI(model="gpt-4o", temperature=0.0)
+_llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", temperature=0)
 persona_generator = PersonaGenerator(_llm)
 personas = persona_generator.run(user_request=user_request)
 
