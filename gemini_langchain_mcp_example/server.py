@@ -29,24 +29,33 @@ async def run_command(command: str) -> str:
     return str(e)
 
 
-@mcp.resource("config://app")
-def get_config() -> str:
-  """Static configuration data"""
-  return "App configuration here"
+@mcp.resource("file://workspace")
+def get_files_in_workspace() -> list[str]:
+  files = os.listdir("./workspace")
+  return files
 
 
 @mcp.prompt()
-def review_code(code: str) -> str:
-  return f"Please review this code:\n\n{code}"
-
-
-@mcp.prompt()
-def debug_error(error: str) -> list[base.Message]:
+def test() -> list[base.AssistantMessage | base.UserMessage]:
   return [
     base.UserMessage("I'm seeing this error:"),
-    base.UserMessage(error),
+    base.UserMessage("test"),
     base.AssistantMessage("I'll help debug that. What have you tried so far?"),
   ]
+
+
+# @mcp.prompt()
+# def review_code(code: str) -> str:
+#   return f"Please review this code:\n\n{code}"
+
+
+# @mcp.prompt()
+# def debug_error(error: str) -> list[base.Message]:
+#   return [
+#     base.UserMessage("I'm seeing this error:"),
+#     base.UserMessage(error),
+#     base.AssistantMessage("I'll help debug that. What have you tried so far?"),
+#   ]
 
 
 if __name__ == "__main__":

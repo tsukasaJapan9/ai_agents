@@ -23,31 +23,12 @@ async def run(server_script: str) -> None:
     async with ClientSession(read, write) as session:
       await session.initialize()
 
-      # prompts = await session.list_prompts()
-      # print("--------------------------")
-      # print("Available prompts")
-      # print("--------------------------")
-      # print(prompts.prompts)
-
-      # resources = await session.list_resources()
-      # print("--------------------------")
-      # print("Available resorces")
-      # print("--------------------------")
-      # print(resources.resources)
-
       tools = await load_mcp_tools(session)
       print("--------------------------")
       print("Available tools")
       print("--------------------------")
       for tool in tools:
         print(f"{tool.name}: {tool.description}")
-
-      # prompts = await load_mcp_prompt(session)
-      # print("--------------------------")
-      # print("Available prompts")
-      # print("--------------------------")
-      # for prompt in prompts:
-      #   print(f"{prompt.name}: {prompt.description}")
 
       resources = await load_mcp_resources(session)
       print("--------------------------")
@@ -56,24 +37,21 @@ async def run(server_script: str) -> None:
       for resource in resources:
         print(f"{resource.data}, {resource.mimetype}, {resource.metadata}")
 
-      # print(await session.list_prompts())
-
       agent = create_react_agent(model, tools)
 
-      # return
+      query_history = []
 
       while True:
         query = input("\nQuery: ").strip()
-        if query.lower() == "quit":
+        if query.lower() == "exit":
           break
-        # query = "こんにちは, ワークスペースにabc.txtというファイルを作成してください"
-        # query = "こんにちは, ワークスペースのファイルをリストアップしてください"
-        agent_response = await agent.ainvoke({"messages": query})
-        # print("--------------------------")
-        # print("Response")
-        # print("--------------------------")
+        query_history.append(query)
+        agent_response = await agent.ainvoke({"messages": query_history})
+        query_history = []
+        print("-----------")
         for message in agent_response["messages"]:
-          print(message.content)
+          print(f"{message.__class__.__name__}: {message.content}")
+          query_history.append(message)
 
 
 if __name__ == "__main__":
