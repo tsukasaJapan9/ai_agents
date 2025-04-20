@@ -19,9 +19,11 @@ personality_options: dict[str, str] = {
   "crazy": "あなたはポンコツダメダメAIエージェントです。ユーザの質問に対して面白おかしくクレイジーな方法で返答してください。",
 }
 
+agent_name = "そしてあなたの名前は 'Welld' です！"
+
 def get_system_message(personality: str) -> SystemMessage:
   return SystemMessage(
-    content=personality_options[personality],
+    content=personality_options[personality] + agent_name,
     id=0,
   )
 
@@ -75,12 +77,16 @@ def main() -> None:
       for message in messages:
         print(f"{message.__class__.__name__}: {message.content}")
 
-      json_data = messages_to_dict(messages)
-      json_str = json.dumps(json_data, indent=2)
-      response = requests.post(INF_SERVER_URL + "/infer", json={"message": json_str})
-      json_data = response.json()
-      json_data = json.loads(json_data["response"])
-
+      json_input_data = messages_to_dict(messages)
+      json_str = json.dumps(json_input_data, indent=2)
+      try:
+        response = requests.post(INF_SERVER_URL + "/infer", json={"message": json_str})
+        json_data = response.json()
+        json_data = json.loads(json_data["response"])
+      except json.decoder.JSONDecodeError:
+        print("failed to parse json")
+        json_data = json_input_data
+      
     # 推論サーバからデータがjsonで来るのでlangchainのオブジェクトに変換
     recevied_msgs = messages_from_dict(json_data)
     print(f"---------- [UI]: receved data from infer server ----------")
