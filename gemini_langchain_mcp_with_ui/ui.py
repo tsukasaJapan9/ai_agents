@@ -6,12 +6,18 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.messages.base import messages_to_dict
 from langchain_core.messages.utils import messages_from_dict
 
+# TODO: ruffが効かない
+
 TEMPERATUE = 0.5
+SEND_MSG_SIZE = 3
 
 API_URL = "http://localhost:8000/infer"
 
-def get_system_messages() -> SystemMessage:
-  return SystemMessage(content="あなたは優秀なAIエージェントです。気さくで楽しく明るい性格で、ユーザの入力に対してユーモラスに返答します。")
+def get_system_message() -> SystemMessage:
+  return SystemMessage(
+    content="あなたは優秀なAIエージェントです。気さくで楽しく明るい性格で、ユーザの入力に対してユーモラスに返答します。", 
+    id=0,
+  )
 
 def main() -> None:
   # UIの初期化
@@ -23,7 +29,7 @@ def main() -> None:
   # ここはあとから修正
   # 性格をPOSTして切り替えられると面白そう
   if "messages" not in st.session_state:
-    st.session_state.messages = [get_system_messages()]
+    st.session_state.messages = [get_system_message()]
 
   if user_input := st.chat_input("何でも入力してね！"):
     # 会話履歴はlangchainのオブジェクトで管理する
@@ -32,11 +38,18 @@ def main() -> None:
     with st.spinner("AI agent is typing..."):
       # 会話履歴 + ユーザの入力をjsonにしてAPIで推論サーバにpost
       print("=================================")
+
+      # すべての履歴を送ると推論に時間がかかるので直近の数個を送る
+      # また先頭にid=0のsystem messageが無い場合は付与する
+      messages = st.session_state.messages[-SEND_MSG_SIZE:]
+      if not isinstance(messages[0], SystemMessage) and messages[0].id != 0:
+        messages.insert(0, get_system_message())
+
       print(f"---------- [UI]: send data to infer server ----------")
-      for message in st.session_state.messages:
+      for message in messages:
         print(f"{message.__class__.__name__}: {message.content}")
 
-      json_data = messages_to_dict(st.session_state.messages)
+      json_data = messages_to_dict(messages)
       json_str = json.dumps(json_data, indent=2)
       response = requests.post(API_URL, json={"message": json_str})
       json_data = response.json()
@@ -50,7 +63,7 @@ def main() -> None:
     st.session_state.messages = []
     for message in recevied_msgs:
       st.session_state.messages.append(message)
-      print(f"{message.__class__.__name__}: {message.content}")
+      print(f"{message.__class__.__name__}: {message.content}(id: {message.id})")
 
     # チャット履歴の描画
     messages = st.session_state.get("messages", [])
