@@ -1,3 +1,7 @@
+#
+# Copied from https://github.com/theailanguage/mcp_client
+#
+
 # Import necessary libraries
 import asyncio  # For handling asynchronous operations
 import os  # For environment variable access
