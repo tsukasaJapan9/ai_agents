@@ -9,13 +9,13 @@ from langchain_core.messages.utils import messages_from_dict
 # TODO: ruffが効かない
 
 TEMPERATUE = 0.5
-SEND_MSG_SIZE = 3
+SEND_MSG_SIZE = 10
 
-API_URL = "http://localhost:8000/infer"
+INF_SERVER_URL = "http://localhost:8000"
 
 def get_system_message() -> SystemMessage:
   return SystemMessage(
-    content="あなたは優秀なAIエージェントです。気さくで楽しく明るい性格で、ユーザの入力に対してユーモラスに返答します。", 
+    content="あなたは優秀なAIエージェントです。気さくで楽しく明るい性格で、ユーザの入力に対してユーモラスに返答します。",
     id=0,
   )
 
@@ -24,7 +24,20 @@ def main() -> None:
   st.set_page_config(
     page_title="Chat App",
   )
-  st.header("Chat app using MCP")
+  st.title("Chat app using MCP")
+
+  # toolとresorceの取得
+  response = requests.get(INF_SERVER_URL + "/tools")
+  json_data = response.json()
+  json_data = json.loads(json_data["tools"])
+
+  st.subheader("Available tools")
+  for name, desc in json_data.items():
+    st.write("-------------------------")
+    st.write(f"{name}: {desc}")
+  st.write("-------------------------")
+
+  st.subheader("Chat history")
 
   # ここはあとから修正
   # 性格をPOSTして切り替えられると面白そう
@@ -51,14 +64,14 @@ def main() -> None:
 
       json_data = messages_to_dict(messages)
       json_str = json.dumps(json_data, indent=2)
-      response = requests.post(API_URL, json={"message": json_str})
+      response = requests.post(INF_SERVER_URL + "/infer", json={"message": json_str})
       json_data = response.json()
       json_data = json.loads(json_data["response"])
-      
+
     # 推論サーバからデータがjsonで来るのでlangchainのオブジェクトに変換
     recevied_msgs = messages_from_dict(json_data)
     print(f"---------- [UI]: receved data from infer server ----------")
-    
+
     # 推論サーバからは履歴も含めて送られてくるので履歴を初期化する
     st.session_state.messages = []
     for message in recevied_msgs:

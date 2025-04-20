@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from langchain_core.messages import HumanMessage
 from langchain_core.messages.base import messages_to_dict
 from langchain_core.messages.utils import messages_from_dict
+from langchain_core.tools import BaseTool
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_mcp_adapters.resources import load_mcp_resources
 from langchain_mcp_adapters.tools import load_mcp_tools
@@ -27,10 +28,12 @@ session = None
 exit_stack = AsyncExitStack()
 agent = None
 model = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", temperature=TEMPERATUE)
+tools = []
+resources = []
 
 @app.on_event("startup")
 async def startup_event():
-  global read_stream, write_stream, session, exit_stack, agent
+  global read_stream, write_stream, session, exit_stack, agent, tools, resources
   server_params = StdioServerParameters(command="python", args=[SERVER_SCRIPT])
   await exit_stack.__aenter__()
   read_stream, write_stream = await exit_stack.enter_async_context(stdio_client(server_params))
@@ -83,3 +86,8 @@ async def infer(input_data: UserInput):
   json_data = messages_to_dict(agent_response)
   json_str = json.dumps(json_data, indent=2)
   return {"response": json_str}
+
+@app.get("/tools")
+def get_tools() -> dict[str, str]:
+  _tools = {tool.name: tool.description for tool in tools}
+  return {"tools": json.dumps(_tools, indent=2)}
