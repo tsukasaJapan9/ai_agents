@@ -1,8 +1,3 @@
-# このファイルで実装すること
-# - langchainを通してgemini 2.0 flashを使う
-# - ユーザの入力にしたがってLLMから解答を得る
-# - MCPを使ってLLMがToolを使えるようにする
-
 import asyncio
 import sys
 
