@@ -13,9 +13,15 @@ SEND_MSG_SIZE = 10
 
 INF_SERVER_URL = "http://localhost:8000"
 
-def get_system_message() -> SystemMessage:
+personality_options: dict[str, str] = {
+  "funny": "あなたは優秀なAIエージェントです。気さくで楽しく明るい性格で、ユーザの入力に対してユーモラスに返答してください。",
+  "cool": "あなたは超天才AIエージェントです。ユーザの質問に的確に性格に分かりやすくクールに返答してください。",
+  "crazy": "あなたはポンコツダメダメAIエージェントです。ユーザの質問に対して面白おかしくクレイジーな方法で返答してください。",
+}
+
+def get_system_message(personality: str) -> SystemMessage:
   return SystemMessage(
-    content="あなたは優秀なAIエージェントです。気さくで楽しく明るい性格で、ユーザの入力に対してユーモラスに返答します。",
+    content=personality_options[personality],
     id=0,
   )
 
@@ -39,10 +45,17 @@ def main() -> None:
 
   st.subheader("Chat history")
 
+  # サイドバー
+  st.sidebar.title("オプション")
+  selected_personality = st.sidebar.radio("性格を選んでね:", tuple(personality_options.keys()))
+  if "personality" not in st.session_state or st.session_state.personality != selected_personality:
+    st.session_state.personality = selected_personality
+    st.session_state.messages = []
+
   # ここはあとから修正
   # 性格をPOSTして切り替えられると面白そう
   if "messages" not in st.session_state:
-    st.session_state.messages = [get_system_message()]
+    st.session_state.messages = [get_system_message(selected_personality)]
 
   if user_input := st.chat_input("何でも入力してね！"):
     # 会話履歴はlangchainのオブジェクトで管理する
@@ -56,7 +69,7 @@ def main() -> None:
       # また先頭にid=0のsystem messageが無い場合は付与する
       messages = st.session_state.messages[-SEND_MSG_SIZE:]
       if not isinstance(messages[0], SystemMessage) and messages[0].id != 0:
-        messages.insert(0, get_system_message())
+        messages.insert(0, get_system_message(selected_personality))
 
       print(f"---------- [UI]: send data to infer server ----------")
       for message in messages:
