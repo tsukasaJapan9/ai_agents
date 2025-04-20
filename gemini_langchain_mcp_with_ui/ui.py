@@ -57,13 +57,14 @@ def main() -> None:
     for message in messages:
       content = message.content
       if isinstance(message, AIMessage):
-        with st.chat_message("AI agent"):
+        with st.chat_message("Assistant"):
           st.markdown(content)
       elif isinstance(message, HumanMessage):
         with st.chat_message("User"):
           st.markdown(content)
       else:
-        st.write(f"System: {content}")
+        with st.chat_message("system"):
+          st.markdown(content)
 
 if __name__ == "__main__":
   main()
