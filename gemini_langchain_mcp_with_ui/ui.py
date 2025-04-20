@@ -10,6 +10,9 @@ TEMPERATUE = 0.5
 
 API_URL = "http://localhost:8000/infer"
 
+def get_system_messages() -> SystemMessage:
+  return SystemMessage(content="あなたは優秀なAIエージェントです。気さくで楽しく明るい性格で、ユーザの入力に対してユーモラスに返答します。")
+
 def main() -> None:
   # UIの初期化
   st.set_page_config(
@@ -17,41 +20,39 @@ def main() -> None:
   )
   st.header("Chat app using MCP")
 
-  # llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", temperature=TEMPERATUE)
-
   # ここはあとから修正
   # 性格をPOSTして切り替えられると面白そう
   if "messages" not in st.session_state:
-    st.session_state.messages = [
-      SystemMessage(content="あなたは優秀なAIエージェントです。気さくで楽しく明るい性格で、ユーザの入力に対してユーモラスに返答します。")
-    ]
+    st.session_state.messages = [get_system_messages()]
+
   if user_input := st.chat_input("何でも入力してね！"):
     # 会話履歴はlangchainのオブジェクトで管理する
     st.session_state.messages.append(HumanMessage(content=user_input))
+
     with st.spinner("AI agent is typing..."):
       # 会話履歴 + ユーザの入力をjsonにしてAPIで推論サーバにpost
+      print("=================================")
+      print(f"---------- [UI]: send data to infer server ----------")
+      for message in st.session_state.messages:
+        print(f"{message.__class__.__name__}: {message.content}")
+
       json_data = messages_to_dict(st.session_state.messages)
       json_str = json.dumps(json_data, indent=2)
-      print("=================================")
-      print(f"send data")
-      print(json_str)
       response = requests.post(API_URL, json={"message": json_str})
-      print(f"received data")
       json_data = response.json()
       json_data = json.loads(json_data["response"])
       
-      print(type(json_data))
-      print(json_data)
-      # json_data = json.loads(response.content.decode("utf-8"))
-      # print(json_data["response"])
-      # response_data = response.json()
-      # print("")
-
     # 推論サーバからデータがjsonで来るのでlangchainのオブジェクトに変換
     recevied_msgs = messages_from_dict(json_data)
-    for msg in recevied_msgs:
-      st.session_state.messages.append(msg)
+    print(f"---------- [UI]: receved data from infer server ----------")
+    
+    # 推論サーバからは履歴も含めて送られてくるので履歴を初期化する
+    st.session_state.messages = []
+    for message in recevied_msgs:
+      st.session_state.messages.append(message)
+      print(f"{message.__class__.__name__}: {message.content}")
 
+    # チャット履歴の描画
     messages = st.session_state.get("messages", [])
     for message in messages:
       content = message.content

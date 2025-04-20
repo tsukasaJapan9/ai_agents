@@ -64,16 +64,17 @@ async def infer(input_data: UserInput):
   global session, agent
 
   print("=============================================")
-
-  print(f"query message: {input_data.message}")
-  print(f"query message: {type(input_data.message)}")
-
   # ユーザからの入力はAPI経由でjsonでくるのでlangchainのメッセージオブジェクトに変換
-  queries = messages_from_dict(json.loads(input_data.message))
-  agent_response = await agent.ainvoke({"messages": queries})
+  messages = messages_from_dict(json.loads(input_data.message))
+
+  print(f"---------- [infer server]: user input data from ui ----------")
+  for message in messages:
+    print(f"{message.__class__.__name__}: {message.content}")
+
+  agent_response = await agent.ainvoke({"messages": messages})
   agent_response = agent_response["messages"]
 
-  print("AI agent response")
+  print(f"---------- [infer server]: ai agent response ----------")
 
   for message in agent_response:
     print(f"{message.__class__.__name__}: {message.content}")
