@@ -101,8 +101,11 @@ def main() -> None:
 
       # デバッグ表示のために形式を変換
       if isinstance(message, ToolMessage):
-        contents = ast.literal_eval(message.content)
-        contents = [json.loads(content) for content in contents]
+        try:
+          contents = ast.literal_eval(message.content)
+          contents = [json.loads(content) for content in contents]
+        except (SyntaxError, ValueError):
+          contents = message.content
       else:
         contents = message.content
 
@@ -120,8 +123,11 @@ def main() -> None:
           st.markdown(content)
       elif isinstance(message, ToolMessage):
         with st.chat_message("Tool"):
-          content = ast.literal_eval(content)
-          content = [json.loads(c) for c in content]
+          try:
+            content = ast.literal_eval(content)
+            content = [json.loads(c) for c in content]
+          except (SyntaxError, ValueError):
+            content = message.content
           st.markdown(content)
       else:
         with st.chat_message("system"):

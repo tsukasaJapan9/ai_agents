@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import requests
+from bs4 import BeautifulSoup
 from mcp.server.fastmcp import FastMCP
 
 GOOGLE_CUSTOM_SEARCH_API_KEY = os.environ["GOOGLE_CUSTOM_SEARCH_API_KEY"]
@@ -28,20 +29,10 @@ def google_custom_search(query: str, num_results: int = 3) -> list[Any]:
     "num": num_results,
   }
 
-  # print("---------------------------------------------------------------")
-  # print("search params")
-  # print(params)
-  # print("---------------------------------------------------------------")
-
   response = requests.get(url, params=params)
   if response.status_code != 200:
     print(f"Error: {response.status_code} - {response.text}")
     return []
-
-  # print("---------------------------------------------------------------")
-  # print("search response")
-  # print(response)
-  # print("---------------------------------------------------------------")
 
   results = response.json().get("items", [])
   top_results = []
@@ -105,10 +96,40 @@ async def search_and_pickup_top_results(search_query: str) -> list[Any]:
   return top_ranks
 
 
+@mcp.tool()
+async def get_url_contents(url: str) -> str:
+  """
+  Returns the contents of the page at the given URL as a string.
+  Use this to find out about the contents of a specific URL.
+
+  Args:
+    url: Web page URL.
+
+  Returns:
+    Contents of the page at the given URL.
+  """
+  result = ""
+  try:
+    response = requests.get(url)
+    response.encoding = response.apparent_encoding
+    html = response.text
+
+    # htmlのパース
+    soup = BeautifulSoup(html, "html.parser")
+
+    # htmlタグを除去して内容をテキスト化
+    text = soup.get_text(separator="\n", strip=True)
+    result = "\n".join(line for line in text.splitlines() if line.strip())
+  except Exception as e:
+    print(f"Failed to get contents({url}): {e}")
+    result = f"ページの内容取得に失敗しました({url})"
+  return result
+
+
 if __name__ == "__main__":
-  # # results = search_and_pickup_top_results("明日の江戸川区の天気調")
   # import asyncio
 
-  # asyncio.run(search_and_pickup_top_results("明日の江戸川区の天気調"))
-  # print(results)
+  # result = asyncio.run(get_url_contents("https://www.npr.org/sections/strange-news/"))
+  # print(result)
+  # asyncio.run(get_url_contents("https://www3.nhk.or.jp/news/catnew.html"))
   mcp.run(transport="stdio")

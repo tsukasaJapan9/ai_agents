@@ -18,7 +18,7 @@ from pydantic import BaseModel
 # for langsmith
 os.environ["LANGCHAIN_TRACING"] = "true"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
-os.environ["LANGSMITH_PROJECT"] = "mcp agent"
+os.environ["LANGSMITH_PROJECT"] = "Welld"
 
 GOOGLE_CUSTOM_SEARCH_API_KEY = os.environ["GOOGLE_CUSTOM_SEARCH_API_KEY"]
 GOOGLE_CUSTOM_SEARCH_ENGINE_ID = os.environ["GOOGLE_CUSTOM_SEARCH_ENGINE_ID"]
@@ -105,8 +105,11 @@ async def infer(input_data: UserInput):
   for message in agent_response:
     # デバッグ表示のために形式を変換
     if isinstance(message, ToolMessage):
-      contents = ast.literal_eval(message.content)
-      contents = [json.loads(content) for content in contents]
+      try:
+        contents = ast.literal_eval(message.content)
+        contents = [json.loads(content) for content in contents]
+      except (SyntaxError, ValueError):
+        contents = message.content
     else:
       contents = message.content
 
