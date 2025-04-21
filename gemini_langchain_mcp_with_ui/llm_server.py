@@ -1,3 +1,4 @@
+import ast
 import json
 import os
 from contextlib import AsyncExitStack
@@ -102,9 +103,14 @@ async def infer(input_data: UserInput):
   print("---------- [infer server]: ai agent response ----------")
 
   for message in agent_response:
+    # デバッグ表示のために形式を変換
     if isinstance(message, ToolMessage):
-      message.content = json.loads(message.content)
-    print(f"{message.__class__.__name__}: {message.content}, {type(message)}")
+      contents = ast.literal_eval(message.content)
+      contents = [json.loads(content) for content in contents]
+    else:
+      contents = message.content
+
+    print(f"{message.__class__.__name__}: {contents}, {type(message)}")
 
   # langchainのinvokeで得たデータはメッセージオブジェクトなのでjsonに変換
   json_data = messages_to_dict(agent_response)
