@@ -2,3 +2,4 @@ workspace
 .venv
 .env
 __pycache__
+config.json

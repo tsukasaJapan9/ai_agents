@@ -23,6 +23,8 @@ os.environ["LANGSMITH_PROJECT"] = "Welld"
 GOOGLE_CUSTOM_SEARCH_API_KEY = os.environ["GOOGLE_CUSTOM_SEARCH_API_KEY"]
 GOOGLE_CUSTOM_SEARCH_ENGINE_ID = os.environ["GOOGLE_CUSTOM_SEARCH_ENGINE_ID"]
 
+CONFIG_PATH = "./config/config.json"
+
 
 TEMPERATUE = 0.5
 # SERVER_SCRIPT = "./local_cmd_mcp_server.py"
@@ -36,9 +38,6 @@ class UserInput(BaseModel):
 
 app = FastAPI()
 
-read_stream = None
-write_stream = None
-session = None
 exit_stack = AsyncExitStack()
 agent = None
 model = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", temperature=TEMPERATUE)
@@ -48,34 +47,43 @@ resources = []
 
 @app.on_event("startup")
 async def startup_event():
-  global read_stream, write_stream, session, exit_stack, agent, tools, resources
-  server_params = StdioServerParameters(
-    command="python",
-    args=[SERVER_SCRIPT],
-    env={
-      "GOOGLE_CUSTOM_SEARCH_API_KEY": GOOGLE_CUSTOM_SEARCH_API_KEY,
-      "GOOGLE_CUSTOM_SEARCH_ENGINE_ID": GOOGLE_CUSTOM_SEARCH_ENGINE_ID,
-    },
-  )
+  global exit_stack, agent, tools, resources
+
+  with open(CONFIG_PATH) as f:
+    config_data = json.load(f)
+  mcp_servers = config_data["mcpServers"]
+
   await exit_stack.__aenter__()
-  read_stream, write_stream = await exit_stack.enter_async_context(stdio_client(server_params))
-  session = await exit_stack.enter_async_context(ClientSession(read_stream, write_stream))
+  print("MCP server initializing")
+  for server_name, server_info in mcp_servers.items():
+    print(f"--------------- {server_name} ---------------")
 
-  await session.initialize()
+    if "env" in server_info:
+      env = {k: os.environ[v] for k, v in server_info["env"].items()}
+    else:
+      env = {}
 
-  tools = await load_mcp_tools(session)
-  print("--------------------------")
-  print("Available tools")
-  print("--------------------------")
-  for tool in tools:
-    print(f"{tool.name}: {tool.description}")
+    server_params = StdioServerParameters(
+      command=server_info["command"],
+      args=server_info["args"],
+      env=env,
+    )
+    read_stream, write_stream = await exit_stack.enter_async_context(stdio_client(server_params))
+    session = await exit_stack.enter_async_context(ClientSession(read_stream, write_stream))
 
-  resources = await load_mcp_resources(session)
-  print("--------------------------")
-  print("Available resources")
-  print("--------------------------")
-  for resource in resources:
-    print(f"{resource.data}, {resource.mimetype}, {resource.metadata}")
+    await session.initialize()
+
+    server_tools = await load_mcp_tools(session)
+    print("<Available tools>")
+    for tool in server_tools:
+      print(f" - {tool.name}: {tool.description}")
+      tools.append(tool)
+
+    server_resources = await load_mcp_resources(session)
+    print("<Available resources>")
+    for resource in server_resources:
+      print(f" - {resource.data}, {resource.mimetype}, {resource.metadata}")
+      resources.append(resource)
 
   agent = create_react_agent(model, tools)
 
@@ -88,7 +96,7 @@ async def shutdown():
 
 @app.post("/infer")
 async def infer(input_data: UserInput):
-  global session, agent
+  global agent
 
   print("=============================================")
   # ユーザからの入力はAPI経由でjsonでくるのでlangchainのメッセージオブジェクトに変換
