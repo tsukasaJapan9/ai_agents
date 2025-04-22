@@ -9,12 +9,12 @@ BRIGHTNESS_DIVIDER = 8
 
 @dataclass
 class Color:
-  red: int
-  green: int
-  blue: int
+  r: int
+  g: int
+  b: int
 
 
-fields_defs = [(f"led_{i}", Color) for i in range(64)]
+fields_defs = [(f"v{i}", Color) for i in range(64)]
 LedMatrixInput = make_dataclass("LedMatrixInput", fields_defs)
 
 
@@ -29,13 +29,13 @@ async def emotional_led_matrix(input: LedMatrixInput) -> str:
   With this LED you can express emotions, write letters and draw pictures.
 
   Args:
-    The LedMatrixInput class has 64 Color classes, each with a red, green, and blue field,
+    The LedMatrixInput class has 64 Color classes, each with a r(red), g(green), and b(blue) field,
     corresponding to the R, G, and B values of a single LED.
-    The range of red, gree, blue values is as follows.
+    The range of r, g, b values is as follows.
 
-    red: 0 ~ 255
-    green: 0 ~ 255
-    blue: 0 ~ 255
+    r(red): 0 ~ 255
+    g(green): 0 ~ 255
+    b(blue): 0 ~ 255
 
   Returns:
     Result of command execution.
@@ -44,9 +44,9 @@ async def emotional_led_matrix(input: LedMatrixInput) -> str:
   rgb_data: list[int] = []
   for f in fields(input):
     value = getattr(input, f.name)
-    r = int(value.red // BRIGHTNESS_DIVIDER)
-    g = int(value.green // BRIGHTNESS_DIVIDER)
-    b = int(value.blue // BRIGHTNESS_DIVIDER)
+    r = int(value.r // BRIGHTNESS_DIVIDER)
+    g = int(value.g // BRIGHTNESS_DIVIDER)
+    b = int(value.b // BRIGHTNESS_DIVIDER)
     rgb_data.extend([r, g, b])
   ser.write(bytearray(rgb_data))
   ser.close()
