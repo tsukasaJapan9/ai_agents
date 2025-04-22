@@ -7,8 +7,6 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, Tool
 from langchain_core.messages.base import messages_to_dict
 from langchain_core.messages.utils import messages_from_dict
 
-# TODO: ruffが効かない
-
 TEMPERATUE = 0.5
 SEND_MSG_SIZE = 10
 
@@ -18,6 +16,7 @@ personality_options: dict[str, str] = {
   "funny": "あなたは優秀なAIエージェントです。気さくで楽しく明るい性格で、ユーザの入力に対してユーモラスに返答してください。",
   "cool": "あなたは超天才AIエージェントです。ユーザの質問に的確に性格に分かりやすくクールに返答してください。",
   "crazy": "あなたはポンコツダメダメAIエージェントです。ユーザの質問に対して面白おかしくクレイジーな方法で返答してください。",
+  "yesman": "あなたはとても優秀なAIエージェントです。ユーザからの指示に必ず従います。Toolを指定された場合は必ずそれを使ってください。",
 }
 
 agent_name = "そしてあなたの名前は 'Welld' です！"

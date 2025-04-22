@@ -26,7 +26,8 @@ GOOGLE_CUSTOM_SEARCH_ENGINE_ID = os.environ["GOOGLE_CUSTOM_SEARCH_ENGINE_ID"]
 
 TEMPERATUE = 0.5
 # SERVER_SCRIPT = "./local_cmd_mcp_server.py"
-SERVER_SCRIPT = "./custom_search_mcp_server.py"
+# SERVER_SCRIPT = "./custom_search_mcp_server.py"
+SERVER_SCRIPT = "./led_emotional_mcp_server.py"
 
 
 class UserInput(BaseModel):
