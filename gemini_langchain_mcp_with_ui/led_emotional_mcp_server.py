@@ -28,6 +28,17 @@ async def emotional_led_matrix(input: LedMatrixInput) -> str:
   You have 8x8, 64 total RGB full color LED matrix.
   With this LED you can express emotions, write letters and draw pictures.
 
+  The LEDs are lined up as follows.
+
+  led_0,  led_1,  led_2,  led_3,  led_4,  led_5,  led_6,  led_7 \n
+  led_8,  led_9,  led_10, led_11, led_12, led_13, led_14, led_15\n
+  led_16, led_17, led_18, led_19, led_20, led_21, led_22, led_23\n
+  led_24, led_25, led_26, led_27, led_28, led_29, led_30, led_31\n
+  led_32, led_33, led_34, led_35, led_36, led_37, led_38, led_39\n
+  led_40, led_41, led_42, led_43, led_44, led_45, led_46, led_47\n
+  led_48, led_49, led_50, led_51, led_52, led_53, led_54, led_55\n
+  led_56, led_57, led_58, led_59, led_60, led_61, led_62, led_63\n
+
   Args:
     The LedMatrixInput class has 64 Color classes, each with a red, green, and blue field,
     corresponding to the R, G, and B values of a single LED.
