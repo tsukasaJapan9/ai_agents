@@ -4,7 +4,7 @@ import serial
 from mcp.server.fastmcp import FastMCP
 
 LED_MAX_BRIGHTNESS = 32
-BRIGHTNESS_DIVIDER = 8
+BRIGHTNESS_DIVIDER = 2
 
 
 @dataclass
@@ -30,14 +30,14 @@ async def emotional_led_matrix(input: LedMatrixInput) -> str:
 
   The LEDs are lined up as follows.
 
-  led_0,  led_1,  led_2,  led_3,  led_4,  led_5,  led_6,  led_7 \n
-  led_8,  led_9,  led_10, led_11, led_12, led_13, led_14, led_15\n
-  led_16, led_17, led_18, led_19, led_20, led_21, led_22, led_23\n
-  led_24, led_25, led_26, led_27, led_28, led_29, led_30, led_31\n
-  led_32, led_33, led_34, led_35, led_36, led_37, led_38, led_39\n
-  led_40, led_41, led_42, led_43, led_44, led_45, led_46, led_47\n
-  led_48, led_49, led_50, led_51, led_52, led_53, led_54, led_55\n
-  led_56, led_57, led_58, led_59, led_60, led_61, led_62, led_63\n
+  v0,  v1,  v2,  v3,  v4,  v5,  v6,  v7 \n
+  v8,  v9,  v10, v11, v12, v13, v14, v15\n
+  v16, v17, v18, v19, v20, v21, v22, v23\n
+  v24, v25, v26, v27, v28, v29, v30, v31\n
+  v32, v33, v34, v35, v36, v37, v38, v39\n
+  v40, v41, v42, v43, v44, v45, v46, v47\n
+  v48, v49, v50, v51, v52, v53, v54, v55\n
+  v56, v57, v58, v59, v60, v61, v62, v63\n
 
   Args:
     The LedMatrixInput class has 64 Color classes, each with a r(red), g(green), and b(blue) field,
