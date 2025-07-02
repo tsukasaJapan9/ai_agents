@@ -8,8 +8,11 @@ from typing import Any, Dict, List, Optional, TypedDict
 from urllib.parse import urljoin
 
 import nest_asyncio
+import uvicorn
 from aiohttp import ClientSession, ClientTimeout
 from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -645,9 +648,65 @@ class MultiAgentOrchestrator:
             return f"複雑なタスクの実行中にエラーが発生しました: {str(e)}"
 
 
+# グローバル変数としてオーケストレータを保持
+orchestrator: Optional[MultiAgentOrchestrator] = None
+
+# FastAPIアプリケーションを作成
+app = FastAPI(title="Multi-Agent Host", version="1.0.0")
+
+# CORSミドルウェアを追加
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.post("/process")
+async def process_request(request: Dict[str, str]):
+    """ユーザーリクエストを処理するHTTPエンドポイント"""
+    global orchestrator
+    if not orchestrator:
+        raise HTTPException(status_code=500, detail="Orchestrator not initialized")
+
+    user_input = request.get("user_input", "")
+    if not user_input:
+        raise HTTPException(status_code=400, detail="user_input is required")
+
+    try:
+        result = await orchestrator.process_user_request(user_input)
+        return {"result": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/agents")
+async def get_agents():
+    """登録されたエージェントの一覧を取得"""
+    global orchestrator
+    if not orchestrator:
+        raise HTTPException(status_code=500, detail="Orchestrator not initialized")
+
+    return {"agents": orchestrator.get_registered_agents()}
+
+
+@app.get("/tasks")
+async def get_tasks():
+    """アクティブなタスクの一覧を取得"""
+    global orchestrator
+    if not orchestrator:
+        raise HTTPException(status_code=500, detail="Orchestrator not initialized")
+
+    return {"tasks": orchestrator.get_active_tasks()}
+
+
 # 使用例
 async def main():
     """使用例"""
+    global orchestrator
+
     # Google API キーが設定されているかチェック
     if not os.getenv("GOOGLE_API_KEY"):
         print("警告: GOOGLE_API_KEY環境変数が設定されていません。")
@@ -674,18 +733,66 @@ async def main():
     # 既存のタスクをクリーンアップ
     await orchestrator.cleanup_all_tasks()
 
-    # 複雑なタスクを実行
-    task_description = "東京の天気を調べて、良い天気なら旅行の提案をしてください"
-    result = await orchestrator.orchestrate_complex_task(task_description, agent_urls)
-    print(f"タスク実行結果: {result}")
-
     # 登録されたエージェントの一覧を表示
     agents = orchestrator.get_registered_agents()
     print(f"登録されたエージェント: {len(agents)}個")
 
-    # アクティブなタスクの一覧を表示
-    tasks = orchestrator.get_active_tasks()
-    print(f"アクティブなタスク: {len(tasks)}個")
+    # コマンドライン引数をチェック
+    import sys
+
+    if len(sys.argv) > 1 and sys.argv[1] == "--server":
+        # FastAPIサーバーモード
+        print("FastAPIサーバーモードで起動します...")
+        print("HTTPエンドポイント: http://localhost:8001")
+        print("ターミナルインターフェース: http://localhost:8001/docs")
+        uvicorn.run(app, host="0.0.0.0", port=8001)
+    else:
+        # ターミナルインターフェースモード
+        print("\n=== マルチエージェントシステム ===")
+        print("何でも聞いてください。'quit' または 'exit' で終了します。")
+        print("'server' と入力するとFastAPIサーバーモードに切り替わります。")
+        print("=" * 50)
+
+        while True:
+            try:
+                # ユーザー入力を受け取る
+                user_input = input("\nあなた: ").strip()
+
+                # 終了コマンドのチェック
+                if user_input.lower() in ["quit", "exit", "終了"]:
+                    print("システムを終了します。")
+                    break
+
+                # サーバーモード切り替えコマンドのチェック
+                if user_input.lower() == "server":
+                    print("FastAPIサーバーモードに切り替えます...")
+                    print("HTTPエンドポイント: http://localhost:8001")
+                    print("ターミナルインターフェース: http://localhost:8001/docs")
+                    uvicorn.run(app, host="0.0.0.0", port=8001)
+                    break
+
+                # 空の入力をスキップ
+                if not user_input:
+                    continue
+
+                print("処理中...")
+
+                # ユーザーリクエストを処理
+                result = await orchestrator.process_user_request(user_input)
+
+                print(f"\nシステム: {result}")
+
+                # アクティブなタスクの一覧を表示
+                tasks = orchestrator.get_active_tasks()
+                if tasks:
+                    print(f"\nアクティブなタスク: {len(tasks)}個")
+
+            except KeyboardInterrupt:
+                print("\n\nシステムを終了します。")
+                break
+            except Exception as e:
+                print(f"\nエラーが発生しました: {str(e)}")
+                continue
 
 
 if __name__ == "__main__":
