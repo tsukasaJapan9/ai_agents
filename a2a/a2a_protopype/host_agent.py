@@ -751,6 +751,7 @@ async def main():
         print("\n=== マルチエージェントシステム ===")
         print("何でも聞いてください。'quit' または 'exit' で終了します。")
         print("'server' と入力するとFastAPIサーバーモードに切り替わります。")
+        print("'help' で利用可能なコマンドを表示します。")
         print("=" * 50)
 
         while True:
@@ -770,6 +771,51 @@ async def main():
                     print("ターミナルインターフェース: http://localhost:8001/docs")
                     uvicorn.run(app, host="0.0.0.0", port=8001)
                     break
+
+                # エージェント一覧表示コマンド
+                if user_input.lower() == "alist":
+                    agents = orchestrator.get_registered_agents()
+                    print(f"\n=== 登録されたエージェント ({len(agents)}個) ===")
+                    for i, agent in enumerate(agents, 1):
+                        print(f"{i}. {agent['name']}")
+                        print(f"   説明: {agent['description']}")
+                        print(f"   URL: {agent['url']}")
+                        if agent["skills"]:
+                            skills = [
+                                skill.get("name", "") for skill in agent["skills"]
+                            ]
+                            print(f"   スキル: {', '.join(skills)}")
+                        print()
+                    continue
+
+                # タスク一覧表示コマンド
+                if user_input.lower() == "tlist":
+                    tasks = orchestrator.get_active_tasks()
+                    print(f"\n=== アクティブなタスク ({len(tasks)}個) ===")
+                    if tasks:
+                        for i, task in enumerate(tasks, 1):
+                            print(f"{i}. タスクID: {task['id']}")
+                            print(f"   状態: {task['status'].get('state', 'unknown')}")
+                            if task["message_history"]:
+                                print(
+                                    f"   メッセージ数: {len(task['message_history'])}"
+                                )
+                            print()
+                    else:
+                        print("アクティブなタスクはありません。")
+                    continue
+
+                # ヘルプコマンド
+                if user_input.lower() in ["help", "h", "?"]:
+                    print("\n=== 利用可能なコマンド ===")
+                    print("alist    - 登録されたエージェントの一覧を表示")
+                    print("tlist    - アクティブなタスクの一覧を表示")
+                    print("server   - FastAPIサーバーモードに切り替え")
+                    print("help/h/? - このヘルプを表示")
+                    print("quit/exit/終了 - システムを終了")
+                    print("その他   - 質問やタスクを実行")
+                    print("=" * 30)
+                    continue
 
                 # 空の入力をスキップ
                 if not user_input:
