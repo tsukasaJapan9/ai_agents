@@ -676,7 +676,7 @@ async def process_request(request: Dict[str, str]):
         raise HTTPException(status_code=400, detail="user_input is required")
 
     try:
-        result = await orchestrator.process_user_request(user_input)
+        result = await orchestrator.orchestrate_complex_task(user_input, agent_urls)
         return {"result": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -718,9 +718,9 @@ async def main():
 
     # エージェントを発見して登録
     agent_urls = [
-        "http://localhost:8000",  # 天気エージェント
-        "http://localhost:8001",  # 旅行エージェント
-        "http://localhost:8002",  # コードエージェント
+        # "http://localhost:8000",  # 天気エージェント
+        # "http://localhost:8001",  # 旅行エージェント
+        # "http://localhost:8002",  # コードエージェント
         "http://localhost:8003",  # Tavily Web検索エージェント
     ]
 
@@ -824,7 +824,9 @@ async def main():
                 print("処理中...")
 
                 # ユーザーリクエストを処理
-                result = await orchestrator.process_user_request(user_input)
+                result = await orchestrator.orchestrate_complex_task(
+                    user_input, agent_urls
+                )
 
                 print(f"\nシステム: {result}")
 
