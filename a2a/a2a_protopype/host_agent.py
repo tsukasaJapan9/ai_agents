@@ -259,7 +259,8 @@ class MultiAgentOrchestrator:
         self.registered_agents: Dict[str, AgentCard] = {}
         self.active_tasks: Dict[str, Task] = {}
         self.llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash-preview-04-17",
+            # model="gemini-2.5-flash-preview-04-17",
+            model="gemini-2.0-flash",
             google_api_key=os.getenv("GOOGLE_API_KEY"),
             temperature=0.7,
             max_tokens=2000,
@@ -357,6 +358,10 @@ class MultiAgentOrchestrator:
                             for part in agent_response["parts"]:
                                 if part.get("type") == "text":
                                     result_text += part.get("text", "")
+
+                            # 完了したタスクをactive_tasksから削除
+                            del self.active_tasks[task_id]
+
                             return f"タスク '{task_id}' の実行結果:\n{result_text}"
                         else:
                             return (
@@ -396,6 +401,10 @@ class MultiAgentOrchestrator:
                                 for part in agent_response["parts"]:
                                     if part.get("type") == "text":
                                         result_text += part.get("text", "")
+
+                                # 完了したタスクをactive_tasksから削除
+                                del self.active_tasks[task_id]
+
                                 return f"タスク '{task_id}' の実行結果:\n{result_text}"
 
                     # 少し待機してから再チェック
@@ -429,13 +438,13 @@ class MultiAgentOrchestrator:
                 return f"タスク状態取得エラー: {str(e)}"
 
         @tool
-        def select_best_agent_for_task(task_description: str) -> str:
+        def select_best_agent_for_task(user_input: str) -> str:
             """タスクに最適なエージェントを選択する"""
             if not self.registered_agents:
                 return "利用可能なエージェントがありません。"
 
             # 簡単なキーワードマッチング
-            task_lower = task_description.lower()
+            task_lower = user_input.lower()
             best_agent = None
             best_score = 0
 
@@ -463,9 +472,9 @@ class MultiAgentOrchestrator:
                     best_agent = agent_name
 
             if best_agent:
-                return f"タスク '{task_description}' に最適なエージェント: {best_agent}"
+                return f"タスク '{user_input}' に最適なエージェント: {best_agent}"
             else:
-                return f"タスク '{task_description}' に適したエージェントが見つかりません。最初のエージェントを使用します: {list(self.registered_agents.keys())[0]}"
+                return f"タスク '{user_input}' に適したエージェントが見つかりません。最初のエージェントを使用します: {list(self.registered_agents.keys())[0]}"
 
         return [
             discover_agent,
@@ -610,7 +619,7 @@ class MultiAgentOrchestrator:
             return f"エラーが発生しました: {str(e)}"
 
     async def orchestrate_complex_task(
-        self, task_description: str, agent_urls: List[str]
+        self, user_input: str, agent_urls: List[str]
     ) -> str:
         """複雑なタスクを複数のエージェントで協調実行"""
         try:
@@ -622,20 +631,15 @@ class MultiAgentOrchestrator:
 
             # 2. 最適なエージェントを選択してタスクを実行
             agent_selection_prompt = f"""
-            以下のタスクを実行するために、利用可能なエージェントから最適なものを選択してください：
+            あなたはユーザの入力に対して元気に明るくそして賢く返答します。
+            ユーザの入力に対して、エージェントを使う必要があると判断した場合は利用可能なエージェントから
+            適切なエージェントを選択し、結果を得てください。
+            エージェントを使う場合は必ず結果を取得してから応答を完了してください。
             
-            タスク: {task_description}
+            ユーザの入力: {user_input}
             
             利用可能なエージェント:
             {json.dumps(self.get_registered_agents(), ensure_ascii=False, indent=2)}
-            
-            手順：
-            1. 最適なエージェントを選択してください
-            2. 選択したエージェントにタスクを送信してください
-            3. タスクの完了を待機して結果を取得してください
-            4. 取得した結果を返してください
-            
-            必ず結果を取得してから応答を完了してください。
             """
 
             # 3. LangGraphワークフローで処理
@@ -795,7 +799,8 @@ async def main():
                     if tasks:
                         for i, task in enumerate(tasks, 1):
                             print(f"{i}. タスクID: {task['id']}")
-                            print(f"   状態: {task['status'].get('state', 'unknown')}")
+                            status = task["status"].get("state", "unknown")
+                            print(f"   状態: {status}")
                             if task["message_history"]:
                                 print(
                                     f"   メッセージ数: {len(task['message_history'])}"
