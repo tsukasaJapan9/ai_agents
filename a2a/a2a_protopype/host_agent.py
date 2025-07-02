@@ -174,7 +174,11 @@ class A2AClient:
                 if response.status == 200:
                     data = await response.json()
                     if "result" in data:
-                        return Task(**data["result"])
+                        result = data["result"]
+                        # message_historyが含まれていない場合は、空のリストを設定
+                        if "message_history" not in result:
+                            result["message_history"] = []
+                        return Task(**result)
                     elif "error" in data:
                         logger.error(f"A2A error: {data['error']}")
                         return None
@@ -184,6 +188,64 @@ class A2AClient:
         except Exception as e:
             logger.error(f"Error getting task: {e}")
             return None
+
+    async def cancel_task(self, task_id: str) -> bool:
+        """タスクをキャンセル"""
+        if not self.session:
+            raise RuntimeError("Session not initialized")
+
+        request_data = {
+            "jsonrpc": "2.0",
+            "id": str(uuid.uuid4()),
+            "method": "tasks/cancel",
+            "params": {"id": task_id},
+        }
+
+        try:
+            url = urljoin(self.base_url, "/a2a")
+            async with self.session.post(url, json=request_data) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    if "result" in data:
+                        return True
+                    elif "error" in data:
+                        logger.error(f"A2A error: {data['error']}")
+                        return False
+                else:
+                    logger.error(f"HTTP error: {response.status}")
+                    return False
+        except Exception as e:
+            logger.error(f"Error canceling task: {e}")
+            return False
+
+    async def list_tasks(self) -> List[str]:
+        """アクティブなタスクの一覧を取得"""
+        if not self.session:
+            raise RuntimeError("Session not initialized")
+
+        request_data = {
+            "jsonrpc": "2.0",
+            "id": str(uuid.uuid4()),
+            "method": "tasks/list",
+            "params": {},
+        }
+
+        try:
+            url = urljoin(self.base_url, "/a2a")
+            async with self.session.post(url, json=request_data) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    if "result" in data and "tasks" in data["result"]:
+                        return [task["id"] for task in data["result"]["tasks"]]
+                    elif "error" in data:
+                        logger.error(f"A2A error: {data['error']}")
+                        return []
+                else:
+                    logger.error(f"HTTP error: {response.status}")
+                    return []
+        except Exception as e:
+            logger.error(f"Error listing tasks: {e}")
+            return []
 
 
 class MultiAgentOrchestrator:
@@ -268,6 +330,79 @@ class MultiAgentOrchestrator:
                 return f"タスク送信エラー: {str(e)}"
 
         @tool
+        def get_task_result(task_id: str) -> str:
+            """タスクの実行結果を取得する"""
+            try:
+                if task_id not in self.active_tasks:
+                    return f"タスク '{task_id}' が見つかりません。"
+
+                task = self.active_tasks[task_id]
+
+                # タスクの状態を確認
+                if task.status.get("state") == "completed":
+                    # 完了している場合は結果を返す
+                    if task.message_history and len(task.message_history) > 1:
+                        # エージェントの応答（最後のメッセージ）を取得
+                        agent_response = task.message_history[-1]
+                        # message_historyは辞書のリストなので、辞書として扱う
+                        if (
+                            isinstance(agent_response, dict)
+                            and agent_response.get("role") == "agent"
+                            and agent_response.get("parts")
+                        ):
+                            result_text = ""
+                            for part in agent_response["parts"]:
+                                if part.get("type") == "text":
+                                    result_text += part.get("text", "")
+                            return f"タスク '{task_id}' の実行結果:\n{result_text}"
+                        else:
+                            return (
+                                f"タスク '{task_id}' の実行結果が取得できませんでした。"
+                            )
+                    else:
+                        return f"タスク '{task_id}' のメッセージ履歴が不足しています。"
+                else:
+                    # まだ実行中の場合は状態を返す
+                    return f"タスク '{task_id}' はまだ実行中です。状態: {task.status.get('state', 'unknown')}"
+            except Exception as e:
+                return f"タスク結果取得エラー: {str(e)}"
+
+        @tool
+        def wait_for_task_completion(task_id: str, max_wait_seconds: int = 30) -> str:
+            """タスクの完了を待機して結果を取得する"""
+            try:
+                if task_id not in self.active_tasks:
+                    return f"タスク '{task_id}' が見つかりません。"
+
+                import time
+
+                start_time = time.time()
+
+                while time.time() - start_time < max_wait_seconds:
+                    task = self.active_tasks[task_id]
+                    if task.status.get("state") == "completed":
+                        # 完了したら結果を返す
+                        if task.message_history and len(task.message_history) > 1:
+                            agent_response = task.message_history[-1]
+                            if (
+                                isinstance(agent_response, dict)
+                                and agent_response.get("role") == "agent"
+                                and agent_response.get("parts")
+                            ):
+                                result_text = ""
+                                for part in agent_response["parts"]:
+                                    if part.get("type") == "text":
+                                        result_text += part.get("text", "")
+                                return f"タスク '{task_id}' の実行結果:\n{result_text}"
+
+                    # 少し待機してから再チェック
+                    time.sleep(1)
+
+                return f"タスク '{task_id}' の完了を待機中ですが、{max_wait_seconds}秒以内に完了しませんでした。"
+            except Exception as e:
+                return f"タスク完了待機エラー: {str(e)}"
+
+        @tool
         def get_task_status(task_id: str) -> str:
             """タスクの状態を取得する"""
             try:
@@ -333,6 +468,8 @@ class MultiAgentOrchestrator:
             discover_agent,
             list_available_agents,
             send_task_to_agent,
+            get_task_result,
+            wait_for_task_completion,
             get_task_status,
             select_best_agent_for_task,
         ]
@@ -377,6 +514,39 @@ class MultiAgentOrchestrator:
                 id=task_id, message=message, accepted_output_modes=["text"]
             )
             return await client.send_task(task_params)
+
+    async def cleanup_all_tasks(self):
+        """すべてのエージェントの既存タスクをキャンセル"""
+        logger.info("既存のタスクをクリーンアップ中...")
+        for agent_name, agent_card in self.registered_agents.items():
+            try:
+                async with A2AClient(agent_card.url) as client:
+                    # アクティブなタスクの一覧を取得
+                    task_ids = await client.list_tasks()
+                    if task_ids:
+                        logger.info(
+                            f"エージェント '{agent_name}' の {len(task_ids)} 個のタスクをキャンセル中..."
+                        )
+                        for task_id in task_ids:
+                            success = await client.cancel_task(task_id)
+                            if success:
+                                logger.info(f"タスク '{task_id}' をキャンセルしました")
+                            else:
+                                logger.warning(
+                                    f"タスク '{task_id}' のキャンセルに失敗しました"
+                                )
+                    else:
+                        logger.info(
+                            f"エージェント '{agent_name}' にアクティブなタスクはありません"
+                        )
+            except Exception as e:
+                logger.error(
+                    f"エージェント '{agent_name}' のタスククリーンアップ中にエラー: {e}"
+                )
+
+        # ローカルのアクティブタスクもクリア
+        self.active_tasks.clear()
+        logger.info("タスククリーンアップ完了")
 
     def register_agent(self, agent_id: str, agent_card: AgentCard):
         """エージェントを登録"""
@@ -447,7 +617,7 @@ class MultiAgentOrchestrator:
                 if agent_card:
                     self.register_agent(agent_card.name, agent_card)
 
-            # 2. 最適なエージェントを選択
+            # 2. 最適なエージェントを選択してタスクを実行
             agent_selection_prompt = f"""
             以下のタスクを実行するために、利用可能なエージェントから最適なものを選択してください：
             
@@ -456,7 +626,13 @@ class MultiAgentOrchestrator:
             利用可能なエージェント:
             {json.dumps(self.get_registered_agents(), ensure_ascii=False, indent=2)}
             
-            選択したエージェントにタスクを送信し、結果を取得してください。
+            手順：
+            1. 最適なエージェントを選択してください
+            2. 選択したエージェントにタスクを送信してください
+            3. タスクの完了を待機して結果を取得してください
+            4. 取得した結果を返してください
+            
+            必ず結果を取得してから応答を完了してください。
             """
 
             # 3. LangGraphワークフローで処理
@@ -494,6 +670,9 @@ async def main():
         if agent_card:
             orchestrator.register_agent(agent_card.name, agent_card)
             print(f"エージェントを登録しました: {agent_card.name}")
+
+    # 既存のタスクをクリーンアップ
+    await orchestrator.cleanup_all_tasks()
 
     # 複雑なタスクを実行
     task_description = "東京の天気を調べて、良い天気なら旅行の提案をしてください"

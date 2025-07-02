@@ -34,6 +34,9 @@ search_tool = TavilySearch(
     include_images=True,
 )
 
+# タスクの実行結果を保存するためのメモリストレージ
+task_results = {}
+
 # --- A2Aエンドポイント実装 ---
 
 
@@ -92,9 +95,12 @@ async def a2a_endpoint(request):
             else:
                 results_text = str(results)
 
-            # 結果をA2AのTask形式で返す
+            # タスクIDを取得または生成
+            task_id = params.get("id", str(uuid.uuid4()))
+
+            # 結果をA2AのTask形式で作成
             task = {
-                "id": params.get("id", str(uuid.uuid4())),
+                "id": task_id,
                 "status": {"state": "completed"},
                 "message_history": [
                     {"role": "user", "parts": [{"type": "text", "text": query}]},
@@ -104,6 +110,10 @@ async def a2a_endpoint(request):
                     },
                 ],
             }
+
+            # タスク結果を保存
+            task_results[task_id] = task
+
             return web.json_response({"jsonrpc": "2.0", "id": id_, "result": task})
         except Exception as e:
             return web.json_response(
@@ -114,15 +124,39 @@ async def a2a_endpoint(request):
                 }
             )
     elif method == "tasks/get":
-        # 単純な実装: すべて即時完了として返す
+        # タスクの詳細情報を返す
+        task_id = params.get("id")
+        if task_id in task_results:
+            # 保存されたタスク結果を返す
+            return web.json_response(
+                {
+                    "jsonrpc": "2.0",
+                    "id": id_,
+                    "result": task_results[task_id],
+                }
+            )
+        else:
+            # タスクが見つからない場合
+            return web.json_response(
+                {
+                    "jsonrpc": "2.0",
+                    "id": id_,
+                    "error": {"code": -32001, "message": "Task not found"},
+                }
+            )
+    elif method == "tasks/cancel":
+        # タスクキャンセル（即座に完了として扱う）
         task_id = params.get("id")
         return web.json_response(
             {
                 "jsonrpc": "2.0",
                 "id": id_,
-                "result": {"id": task_id, "status": {"state": "completed"}},
+                "result": {"cancelled": True, "task_id": task_id},
             }
         )
+    elif method == "tasks/list":
+        # アクティブなタスクの一覧（Tavilyエージェントは即座に完了するため空リスト）
+        return web.json_response({"jsonrpc": "2.0", "id": id_, "result": {"tasks": []}})
     else:
         return web.json_response(
             {
